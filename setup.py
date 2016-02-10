@@ -1,27 +1,21 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='django-oauth-tokens',
-    version=__import__('oauth_tokens').__version__,
-    description='Application for getting, refreshing and storing OAuth access_tokens for Django standalone applications',
+    name='django-social-api',
+    version=__import__('social-api').__version__,
+    description='Django social networks API abstraction layer',
     long_description=open('README.md').read(),
     author='ramusus',
     author_email='ramusus@gmail.com',
-    url='https://github.com/ramusus/django-oauth-tokens',
-    download_url='http://pypi.python.org/pypi/django-oauth-tokens',
+    url='https://github.com/ramusus/django-social-api',
+    download_url='http://pypi.python.org/pypi/django-social-api',
     license='BSD',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,  # because we're including media that Django needs
     install_requires=[
-        'django',
-        'requests',
-        'requests_oauthlib',
-        'beautifulsoup4',
-        'django-taggit',
-        'django-annoying',
         'distributedlock',
-        'simplejson',
+        'requests',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
