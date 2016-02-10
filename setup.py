@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-social-api',
-    version=__import__('social-api').__version__,
+    version=__import__('social_api').__version__,
     description='Django social networks API abstraction layer',
     long_description=open('README.md').read(),
     author='ramusus',
