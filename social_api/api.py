@@ -138,7 +138,7 @@ class ApiAbstractBase(object):
         return tokens
 
     def get_token(self):
-        if self.consistent_token not in self.used_access_tokens:
+        if self.consistent_token and self.consistent_token not in self.used_access_tokens:
             return self.consistent_token
 
         self.tokens = self.get_tokens()
