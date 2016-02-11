@@ -20,7 +20,7 @@ def get_storages(*args, **kwargs):
         yield get_storage(import_path, *args, **kwargs)
 
 
-@lru_cache.lru_cache(maxsize=None)
+#@lru_cache.lru_cache(maxsize=None)
 def get_storage(import_path, *args, **kwargs):
     """
     Imports the staticfiles finder class described by import_path, where

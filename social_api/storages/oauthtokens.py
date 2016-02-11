@@ -1,5 +1,5 @@
 import time
-from oauth_tokens.models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
+from oauth_tokens.models import AccessToken, UserCredentials, AccessTokenGettingError, AccessTokenRefreshingError
 
 from ..lock import distributedlock, LockNotAcquiredError
 from ..utils import limit_errored_calls
@@ -18,7 +18,7 @@ class OAuthTokensStorage(TokensStorageAbstractBase):
     def get_tokens(self):
         queryset = AccessToken.objects.filter(provider=self.provider).order_by('-granted_at')
         if self.tag:
-            queryset = queryset.filter(tag=self.tag)
+            queryset = queryset.filter(user_credentials__in=UserCredentials.objects.filter(tags__name=self.tag))
         return queryset.values_list('access_token', flat=True)
 
     @limit_errored_calls(AccessTokenGettingError, 5)
