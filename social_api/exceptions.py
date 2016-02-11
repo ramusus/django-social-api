@@ -1,14 +1,2 @@
-class LoginPasswordError(Exception):
-    pass
-
-
-class AccountLocked(Exception):
-    pass
-
-
-class WrongRedirectUrl(Exception):
-    pass
-
-
-class WrongAuthorizationResponseUrl(Exception):
+class NoActiveTokens(Exception):
     pass

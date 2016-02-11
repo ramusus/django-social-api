@@ -1,8 +1,6 @@
 INSTALLED_APPS = (
     'taggit',
+    'oauth_tokens',
+    'social.apps.django_app.default',
+    'vkontakte_api',
 )
-
-OAUTH_TOKENS_TWITTER_CLIENT_ID = 'NLKrDQAE6YcSi76b0PGSg'
-OAUTH_TOKENS_TWITTER_CLIENT_SECRET = '4D8TBznBjiJWlRE00G4qETLNNmfFadiKbREDrmNSDE'
-OAUTH_TOKENS_TWITTER_USERNAME = 'baranus1@mail.ru'
-OAUTH_TOKENS_TWITTER_PASSWORD = 'jcej9EIAQrrptDBy'

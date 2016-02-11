@@ -3,80 +3,53 @@ import logging
 import socket
 import sys
 import time
-import warnings
+import random
 from abc import ABCMeta, abstractmethod, abstractproperty
 from httplib import BadStatusLine, ResponseNotReady, IncompleteRead
 from ssl import SSLError
 
 from requests.exceptions import ConnectionError
 from django.conf import settings
-from django.test.utils import override_settings
 
-from .models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
-from .lock import distributedlock, LockNotAcquiredError
+from .exceptions import NoActiveTokens
+from .utils import get_storages, override_api_context
 
-__all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton']
-
-
-class NoActiveTokens(Exception):
-    pass
+__all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton', 'override_api_context']
 
 
 class ApiAbstractBase(object):
     __metaclass__ = ABCMeta
 
     consistent_token = None
-    error_class = Exception
     error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine, ResponseNotReady, IncompleteRead)
     sleep_repeat_error_messages = []
 
     recursion_count = 0
 
     method = None
-    token_tag = None
-    token_tag_arg_name = 'methods_access_tag'
-    user = None
-    user_arg_name = 'user'
     used_access_tokens = None
 
-    update_tokens_max_count = 5
-    refresh_tokens_max_count = 5
-
     def __init__(self):
+        self.tokens = []
         self.used_access_tokens = []
         self.consistent_token = None
         self.logger = self.get_logger()
         self.api = None
 
-    def set_context(self, **kwargs):
+    def set_context(self):
         # define context of call on each calling, becouse instanse is singleton
-        self.call_by_user = self.token_tag = self.consistent_token = None
+        self.consistent_token = None
 
-        if self.token_tag_arg_name in kwargs:
-            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
-                          % self.token_tag_arg_name, DeprecationWarning)
-            self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
-
-        if self.user_arg_name in kwargs:
-            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
-                          % self.user_arg_name, DeprecationWarning)
-            self.call_by_user = kwargs.pop(self.user_arg_name, None)
-
-        context = getattr(settings, 'OAUTH_TOKENS_API_CALL_CONTEXT', None)
-        if context and self.provider in context:
-            if 'user' in context[self.provider]:
-                self.call_by_user = context[self.provider]['call_by_user']
-            if 'tag' in context[self.provider]:
-                self.token_tag = context[self.provider]['tag']
-            if 'token' in context[self.provider]:
-                self.consistent_token = context[self.provider]['token']
+        context = getattr(settings, 'SOCIAL_API_CALL_CONTEXT', None)
+        if context and self.provider in context and 'token' in context[self.provider]:
+            self.consistent_token = context[self.provider]['token']
 
     def call(self, method, *args, **kwargs):
         self.method = method
-        self.set_context(**kwargs)
+        self.set_context()
 
         try:
-            token = self.get_token(tag=self.token_tag)
+            token = self.get_token()
         except NoActiveTokens, e:
             return self.handle_error_no_active_tokens(e, *args, **kwargs)
 
@@ -143,103 +116,57 @@ class ApiAbstractBase(object):
 
     def repeat_call(self, *args, **kwargs):
         self.recursion_count += 1
-        if self.token_tag:
-            kwargs[self.token_tag_arg_name] = self.token_tag
-        if self.call_by_user:
-            kwargs[self.user_arg_name] = self.call_by_user
         return self.call(self.method, *args, **kwargs)
 
     def update_tokens(self):
-        lock_name = 'update_tokens_for_%s' % self.provider
         self.consistent_token = None
-        try:
-            # the first call of method will update tokens, all others will just wait for releasing the lock
-            with distributedlock(lock_name, blocking=False):
-                self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method,
-                                                                                              self.recursion_count))
-                AccessToken.objects.fetch(provider=self.provider)
-                return True
-        except LockNotAcquiredError:
-            # wait until lock will be released and return
-            updated = False
-            while not updated:
-                self.logger.info("Updating access tokens, waiting for another execution, method: %s, recursion "
-                                 "count: %d" % (self.method, self.recursion_count))
-                try:
-                    with distributedlock(lock_name, blocking=False):
-                        updated = True
-                except LockNotAcquiredError:
-                     time.sleep(1)
-            return True
-        except AccessTokenGettingError:
-            if self.recursion_count <= self.update_tokens_max_count:
-                time.sleep(1)
-                self.recursion_count += 1
-                self.update_tokens()
-                return True
-            else:
-                raise
+        for storage in get_storages(self.provider):
+            storage.update_tokens()
 
     def refresh_tokens(self):
-        # TODO: implement the same logic of distributedlock as in update_tokens method
-        if self.consistent_token:
-            self.update_tokens()
-        else:
-            try:
-                return AccessToken.objects.refresh(self.provider)
-            except AccessTokenRefreshingError:
-                if self.recursion_count <= self.refresh_tokens_max_count:
-                    time.sleep(1)
-                    self.recursion_count += 1
-                    self.refresh_tokens()
-                else:
-                    raise
+        self.consistent_token = None
+        for storage in get_storages(self.provider):
+            storage.refresh_tokens()
 
-    def get_tokens(self, **kwargs):
-        return AccessToken.objects.filter(provider=self.provider, **kwargs).order_by('-granted_at')
+    def get_tokens(self):
+        tokens = []
+        for storage in get_storages(self.provider):
+            storage_tokens = storage.get_tokens()
+            if storage.only_this:
+                return storage_tokens
+            tokens += storage_tokens
+        return tokens
 
-    def get_token(self, **kwargs):
-        token = None
-
+    def get_token(self):
         if self.consistent_token not in self.used_access_tokens:
-            token = self.consistent_token
+            return self.consistent_token
 
-        if not token:
-            if self.call_by_user:
-                # python social auth hook
-                return self.get_token_for_user()
+        self.tokens = self.get_tokens()
 
-            tokens = self.get_tokens(**kwargs)
+        if not self.tokens:
+            self.update_tokens()
+            self.tokens = self.get_tokens()
+            if not self.tokens:
+                raise NoActiveTokens("There is no active tokens for provider %s after updating" % self.provider)
 
+        tokens = self.tokens
+        if self.used_access_tokens:
+            tokens = list(set(tokens).difference(set(self.used_access_tokens)))
             if not tokens:
-                self.update_tokens()
-                tokens = self.get_tokens(**kwargs)
+                raise NoActiveTokens("There is no active tokens for provider %s, used_tokens: %s"
+                                     % (self.provider, self.used_access_tokens))
 
-            if self.used_access_tokens:
-                tokens = tokens.exclude(access_token__in=self.used_access_tokens)
-
-            try:
-                token = tokens[0].access_token
-            except IndexError:
-                raise NoActiveTokens("There is no active AccessTokens for provider %s with kwargs: %s, used_tokens: %s"
-                                     % (self.provider, kwargs, self.used_access_tokens))
-
-        return token
-
-    @property
-    def social_auth_provider(self):
-        return NotImplementedError()
-
-    def get_token_for_user(self):
-        from social.apps.django_app.default.models import UserSocialAuth
-        social_auth = UserSocialAuth.objects.get(user=self.call_by_user, provider=self.provider_social_auth)
-        return social_auth.extra_data['access_token']
+        return random.choice(tokens)
 
     def get_logger(self):
         return logging.getLogger('%s_api' % self.provider)
 
     @abstractproperty
     def provider(self):
+        pass
+
+    @abstractproperty
+    def error_class(self):
         pass
 
     @abstractmethod
@@ -257,17 +184,11 @@ class Singleton(ABCMeta):
     from here http://stackoverflow.com/a/33201/87535
     """
 
-    def __init__(cls, name, bases, dict):
-        super(Singleton, cls).__init__(name, bases, dict)
+    def __init__(cls, name, bases, dictionary):
+        super(Singleton, cls).__init__(name, bases, dictionary)
         cls.instance = None
 
-    def __call__(cls, *args, **kw):
+    def __call__(cls, *args, **kwargs):
         if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*args, **kw)
+            cls.instance = super(Singleton, cls).__call__(*args, **kwargs)
         return cls.instance
-
-
-def override_api_context(provider, **kwargs):
-    context = getattr(settings, 'OAUTH_TOKENS_API_CALL_CONTEXT', {provider: {}}).get(provider, {})
-    context.update(kwargs)
-    return override_settings(OAUTH_TOKENS_API_CALL_CONTEXT={provider: context})

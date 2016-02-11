@@ -18,10 +18,13 @@ install:
   - pip install factory_boy
   - pip install coveralls
   - pip install mock
+  - pip install django_oauth_tokens
+  - pip install python_socia_auth
+  - pip install django_vkontakte_api
   - pip install .
 script:
   - django-admin.py --version
-  - coverage run --source=oauth_tokens quicktest.py oauth_tokens
+  - coverage run --source=social_api quicktest.py social_api
 after_success:
   - coveralls
 notifications:
