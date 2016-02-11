@@ -28,7 +28,7 @@ You can temporary override this settings using context manager `override_api_con
 Available storages, you can add your own storages inherited from social_api.storages.base.TokensStorageAbstractBase
 
     SOCIAL_API_TOKENS_STORAGES = {
-        'social_api.storages.oauth_tokens.OAuthTokensStorage',
+        'social_api.storages.oauthtokens.OAuthTokensStorage',
         'social_api.storages.social_auth.SocialAuthTokensStorage',
     }
 

@@ -2,6 +2,7 @@ import time
 from oauth_tokens.models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
 
 from ..lock import distributedlock, LockNotAcquiredError
+from ..utils import limit_errored_calls
 from .base import TokensStorageAbstractBase
 
 
@@ -47,23 +48,3 @@ class OAuthTokensStorage(TokensStorageAbstractBase):
     def refresh_tokens(self):
         # TODO: implement the same logic of distributedlock as in update_tokens method
         return AccessToken.objects.refresh(self.provider)
-
-
-def limit_errored_calls(error, limit):
-    count = [0]
-
-    def _inner_decorator(fn):
-        def _inner_function(*args, **kwargs):
-            try:
-                return fn(*args, **kwargs)
-            except error:
-                if count[0] <= limit:
-                    time.sleep(1)
-                    count[0] += 1
-                    return _inner_function(*args, **kwargs)
-                else:
-                    raise Exception("Limit of calls %s method %s achieved" % (limit, fn))
-
-        return _inner_function
-
-    return _inner_decorator
