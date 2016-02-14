@@ -33,7 +33,7 @@ class SocialAuthTokensStorage(TokensStorageAbstractBase):
     def get_tokens(self):
         queryset = UserSocialAuth.objects.filter(provider=self.get_provider())
         if self.user:
-            queryset.filter(user=self.user)
+            queryset = queryset.filter(user=self.user)
         return [s.extra_data['access_token'] for s in queryset]
 
     def update_tokens(self):
