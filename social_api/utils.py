@@ -1,6 +1,5 @@
 import time
 from django.utils.module_loading import import_string
-from django.utils import lru_cache
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.test.utils import override_settings
@@ -9,10 +8,20 @@ from .storages.base import TokensStorageAbstractBase
 from .exceptions import CallsLimitError
 
 
-STORAGES = getattr(settings, 'SOCIAL_API_TOKENS_STORAGES', {
-    'social_api.storages.oauthtokens.OAuthTokensStorage',
-    'social_api.storages.social_auth.SocialAuthTokensStorage',
-})
+def get_storages_default():
+    storages_default = [
+        ('social_api.storages.oauthtokens.OAuthTokensStorage', 'oauth_tokens'),
+        ('social_api.storages.social_auth.SocialAuthTokensStorage', 'social.apps.django_app.default'),
+    ]
+    storages = [storage for storage, app in storages_default if app in settings.INSTALLED_APPS]
+    if not storages:
+        raise ImproperlyConfigured("No available token storages found for social_api application. Add to "
+                                   "INSTALLES_APPS at least one storage: social_auth or oauth_tokens or provide "
+                                   "custom setting SOCIAL_API_TOKENS_STORAGES")
+    return storages
+
+
+STORAGES = getattr(settings, 'SOCIAL_API_TOKENS_STORAGES', get_storages_default())
 
 
 def get_storages(*args, **kwargs):
@@ -20,7 +29,6 @@ def get_storages(*args, **kwargs):
         yield get_storage(import_path, *args, **kwargs)
 
 
-#@lru_cache.lru_cache(maxsize=None)
 def get_storage(import_path, *args, **kwargs):
     """
     Imports the staticfiles finder class described by import_path, where
