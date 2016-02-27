@@ -9,19 +9,21 @@ from .exceptions import CallsLimitError
 
 
 def get_storages_default():
-    storages_default = [
-        ('social_api.storages.oauthtokens.OAuthTokensStorage', 'oauth_tokens'),
-        ('social_api.storages.social_auth.SocialAuthTokensStorage', 'social.apps.django_app.default'),
-    ]
-    storages = [storage for storage, app in storages_default if app in settings.INSTALLED_APPS]
-    if not storages:
-        raise ImproperlyConfigured("No available token storages found for social_api application. Add to "
-                                   "INSTALLES_APPS at least one storage: social_auth or oauth_tokens or provide "
-                                   "custom setting SOCIAL_API_TOKENS_STORAGES")
+    storages = getattr(settings, 'SOCIAL_API_TOKENS_STORAGES', None)
+    if storages is None:
+        storages_default = [
+            ('social_api.storages.oauthtokens.OAuthTokensStorage', 'oauth_tokens'),
+            ('social_api.storages.social_auth.SocialAuthTokensStorage', 'social.apps.django_app.default'),
+        ]
+        storages = [storage for storage, app in storages_default if app in settings.INSTALLED_APPS]
+        if not storages:
+            raise ImproperlyConfigured("No available token storages found for social_api application. Add to "
+                                       "INSTALLES_APPS at least one storage: social_auth or oauth_tokens or provide "
+                                       "custom setting SOCIAL_API_TOKENS_STORAGES")
     return storages
 
 
-STORAGES = getattr(settings, 'SOCIAL_API_TOKENS_STORAGES', get_storages_default())
+STORAGES = get_storages_default()
 
 
 def get_storages(*args, **kwargs):
