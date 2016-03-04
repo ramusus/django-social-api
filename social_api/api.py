@@ -4,6 +4,7 @@ import socket
 import sys
 import time
 import random
+import six
 from abc import ABCMeta, abstractmethod, abstractproperty
 from httplib import BadStatusLine, ResponseNotReady, IncompleteRead
 from ssl import SSLError
@@ -100,7 +101,7 @@ class ApiAbstractBase(object):
         self.logger.error("Error '%s'. Method %s, args: %s, kwargs: %s, recursion count: %d" % (
             e, self.method, args, kwargs, self.recursion_count))
         error_class = type(e)
-        raise error_class, e, sys.exc_info()[2]
+        six.reraise(error_class, e, sys.exc_info()[2])
 
     def get_error_code(self, e):
         return e.code
