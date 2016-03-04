@@ -6,7 +6,6 @@ import time
 import random
 import six
 from abc import ABCMeta, abstractmethod, abstractproperty
-from httplib import BadStatusLine, ResponseNotReady, IncompleteRead
 from ssl import SSLError
 
 from requests.exceptions import ConnectionError
@@ -14,6 +13,13 @@ from django.conf import settings
 
 from .exceptions import NoActiveTokens
 from .utils import get_storages, override_api_context
+
+try:
+    # py3
+    from http.client import BadStatusLine, ResponseNotReady, IncompleteRead
+except ImportError:
+    # py2.7
+    from httplib import BadStatusLine, ResponseNotReady, IncompleteRead
 
 __all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton', 'override_api_context']
 
