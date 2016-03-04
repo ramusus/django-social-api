@@ -50,21 +50,21 @@ class ApiAbstractBase(object):
 
         try:
             token = self.get_token()
-        except NoActiveTokens, e:
+        except NoActiveTokens as e:
             return self.handle_error_no_active_tokens(e, *args, **kwargs)
 
         self.api = self.get_api(token)
 
         try:
             response = self.get_api_response(*args, **kwargs)
-        except self.error_class, e:
+        except self.error_class as e:
             response = self.handle_error_message(e, *args, **kwargs)
             if response is not None:
                 return response
             response = self.handle_error_code(e, *args, **kwargs)
-        except self.error_class_repeat, e:
+        except self.error_class_repeat as e:
             response = self.handle_error_repeat(e, *args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             return self.log_and_raise(e, *args, **kwargs)
 
         return response
