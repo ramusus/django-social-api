@@ -19,7 +19,7 @@ install:
   - pip install coveralls
   - pip install mock
   - pip install django_oauth_tokens
-  - pip install python_socia_auth
+  - pip install python_social_auth
   - pip install django_vkontakte_api
   - pip install .
 script:
