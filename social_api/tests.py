@@ -15,20 +15,6 @@ from .exceptions import CallsLimitError
 TOKEN = 'b492c0a63455412b67c579422119da1bf73ce07e3bf28f18fa8446c2441844eee57232ca15b7229122dd2'
 
 
-class SocialApiTestCase(TestCase):
-    _settings = None
-    token = None
-    provider = ''
-
-    def setUp(self):
-        context = getattr(settings, 'SOCIAL_API_CALL_CONTEXT', {})
-        self._settings = dict(context)
-        context.update({self.provider: {'token': self.token}})
-
-    def tearDown(self):
-        setattr(settings, 'SOCIAL_API_CALL_CONTEXT', self._settings)
-
-
 def raise_error(*args, **kwargs):
     raise AccessTokenGettingError
 
