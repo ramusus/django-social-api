@@ -102,7 +102,7 @@ class ApiAbstractBase(object):
         self.logger.error("Error '%s'. Method %s, args: %s, kwargs: %s, recursion count: %d" % (
             e, self.method, args, kwargs, self.recursion_count))
         error_class = type(e)
-        six.reraise(error_class, e, sys.exc_info()[2])
+        six.reraise(error_class, e)
 
     def get_error_code(self, e):
         return e.code
