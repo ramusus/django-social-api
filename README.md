@@ -1,7 +1,7 @@
 Django Social API
 ====================
 
-[![PyPI version](https://badge.fury.io/py/django-vkontakte-api.png)](http://badge.fury.io/py/django-vkontakte-api) [![Build Status](https://travis-ci.org/ramusus/django-vkontakte-api.png?branch=master)](https://travis-ci.org/ramusus/django-vkontakte-api) [![Coverage Status](https://coveralls.io/repos/ramusus/django-vkontakte-api/badge.png?branch=master)](https://coveralls.io/r/ramusus/django-vkontakte-api)
+[![PyPI version](https://badge.fury.io/py/django-social-api.png)](http://badge.fury.io/py/django-social-api) [![Build Status](https://travis-ci.org/ramusus/django-social-api.png?branch=master)](https://travis-ci.org/ramusus/django-social-api) [![Coverage Status](https://coveralls.io/repos/ramusus/django-social-api/badge.png?branch=master)](https://coveralls.io/r/ramusus/django-social-api)
 
 Django social networks API abstraction layer. Application allows to use family of social network API applications, such as:
 
